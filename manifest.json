@@ -1,0 +1,17 @@
+{
+  "name": "ແຜນການເງິນ",
+  "short_name": "ການເງິນ",
+  "description": "ລະບົບຈັດການລາຍຮັບ - ລາຍຈ່າຍ ແລະ ການເກັບເງິນ",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#1e293b",
+  "theme_color": "#1e293b",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' rx='32' fill='%234f46e5'/%3E%3Ctext x='96' y='130' text-anchor='middle' font-size='100' fill='white' font-family='serif'%3E₭%3C/text%3E%3C/svg%3E",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    }
+  ]
+}
