@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="lo">
+<head>
+    <meta charset="UTF-8">
+    <title>ລະບົບຈັດການການເງິນ</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* ເພີ່ມ Style ສຳລັບກ່ອງຍອດເຫຼືອ */
+        .balance-container { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
+        .bal-card { padding: 20px; background: #fff; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: center; border: 2px solid #ddd; }
+        .bal-card h3 { margin-bottom: 10px; color: #555; }
+        .bal-value { font-size: 28px; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="summary-dashboard">
+        <div class="dash-card"><h3>ລາຍຮັບ (ກີບ)</h3><p id="totalIncomeLAK">0 ₭</p></div>
+        <div class="dash-card"><h3>ລາຍຈ່າຍ (ກີບ)</h3><p id="totalExpenseLAK">0 ₭</p></div>
+        <div class="dash-card"><h3>ລາຍຮັບ (ບາດ)</h3><p id="totalIncomeTHB">0 ฿</p></div>
+        <div class="dash-card"><h3>ລາຍຈ່າຍ (ບາດ)</h3><p id="totalExpenseTHB">0 ฿</p></div>
+    </div>
+
+    <div class="balance-container">
+        <div class="bal-card" style="border-color: #36A2EB;">
+            <h3>ຍອດເງິນກີບຄົງເຫຼືອ</h3>
+            <p id="balanceLAK" class="bal-value">0 ₭</p>
+        </div>
+        <div class="bal-card" style="border-color: #FFCE56;">
+            <h3>ຍອດເງິນບາດຄົງເຫຼືອ</h3>
+            <p id="balanceTHB" class="bal-value">0 ฿</p>
+        </div>
+    </div>
+
+    <div class="main-wrapper" style="margin-bottom: 20px;">
+        <div class="card">
+            <h2>ຄິດໄລ່ອັດຕາແລກປ່ຽນ (THB to LAK)</h2>
+            <div class="form-group" style="display: flex; flex-direction: row; gap: 10px;">
+                <input type="number" id="exchangeRate" placeholder="ອັດຕາແລກປ່ຽນ (ເຊັ່ນ: 850)" oninput="calculateExchange()">
+                <input type="number" id="thaiBaht" placeholder="ຈຳນວນເງິນບາດ (THB)" oninput="calculateExchange()">
+                <input type="text" id="resultLAK" placeholder="ຜົນລວມເປັນກີບ (LAK)" readonly style="background: #f8f9fa;">
+            </div>
+        </div>
+    </div>
+
+    <div class="main-wrapper">
+        <div class="card" style="margin-bottom: 20px;">
+            <h2>ແຜນວາດສະແດງລາຍຈ່າຍ</h2>
+            <canvas id="expenseChart" style="max-height: 300px;"></canvas>
+        </div>
+    </div>
+
+    <div class="main-wrapper">
+        <div class="card">
+            <h2>ບັນທຶກລາຍຈ່າຍຕົວຈິງ</h2>
+            <div style="margin-bottom: 20px; background: #f9f9f9; padding: 15px; border-radius: 8px;">
+                <label style="font-weight: bold; display: block; margin-bottom: 5px;">ກອງຂໍ້ມູນລາຍຈ່າຍຕາມວັນທີ:</label>
+                <input type="date" id="filterDate" onchange="updateUI()" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
+            </div>
+
+            <div class="tabs">
+                <button class="tab-btn active" onclick="openTab('generalForm', event)">ລາຍຈ່າຍ</button>
+                <button class="tab-btn" onclick="openTab('fuelForm', event)">ຄ່ານ້ຳມັນ</button>
+            </div>
+            
+            <div id="generalForm" class="tab-content">
+                <div class="form-group">
+                    <input type="text" id="item1" placeholder="ລາຍການ...">
+                    <input type="number" id="amount1" step="any" placeholder="ຈຳນວນເງິນ">
+                    <select id="category1">
+                        <option value="ອາຫານ">ຄ່າອາຫານ</option>
+                        <option value="ຄ່າໄຟ">ຄ່າໄຟ</option>
+                        <option value="ສຸຂະພາບ">ຄ່າສຸຂະພາບ</option>
+                        <option value="ບາດ">ລາຍຈ່າຍເປັນບາດ</option>
+                        <option value="ອື່ນໆ">ອື່ນໆ</option>
+                    </select>
+                    <select id="currency1">
+                        <option value="LAK">ກີບ (₭)</option>
+                        <option value="THB">ບາດ (฿)</option>
+                    </select>
+                    <input type="date" id="date1">
+                    <button onclick="addGeneral()" class="btn-blue">ບັນທຶກ</button>
+                </div>
+            </div>
+
+            <div id="fuelForm" class="tab-content" style="display:none;">
+                <div class="form-group">
+                    <input type="number" id="pricePerLiter" step="any" placeholder="ລາຄາຕໍ່ລິດ (₭)" oninput="calculateLiters()">
+                    <input type="number" id="totalAmountPaid" step="any" placeholder="ເງິນທີ່ໃສ່ຕົວຈິງ (₭)" oninput="calculateLiters()">
+                    <input type="text" id="calculatedLiters" placeholder="ຈຳນວນລິດທີ່ໄດ້ (L)" readonly>
+                    <button onclick="addFuel()" class="btn-blue">ບັນທຶກຄ່ານ້ຳມັນ</button>
+                </div>
+            </div>
+            <table><thead><tr><th>ລາຍການ</th><th>ຈຳນວນ</th><th>ຈັດການ</th></tr></thead><tbody id="expenseList"></tbody></table>
+        </div>
+
+        <div class="card">
+            <h2>ລາຍຮັບທີ່ໄດ້</h2>
+            <div class="form-group">
+                <input type="text" id="incomeName" placeholder="ໄດ້ເງິນມາຈາກ">
+                <input type="number" id="incomeAmount" step="any" placeholder="ຈຳນວນເງິນ">
+                <select id="currencyIncome">
+                    <option value="LAK">ກີບ (₭)</option>
+                    <option value="THB">ບາດ (฿)</option>
+                </select>
+                <button onclick="addIncome()" class="btn-green">ບັນທຶກລາຍຮັບ</button>
+            </div>
+            <table><thead><tr><th>ຊື່</th><th>ຈຳນວນ</th><th>ຈັດການ</th></tr></thead><tbody id="incomeList"></tbody></table>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
