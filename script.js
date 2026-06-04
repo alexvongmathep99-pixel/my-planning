@@ -1,23 +1,25 @@
 // =================== STATE ===================
-let expenses   = JSON.parse(localStorage.getItem('expenses'))   || [];
-let incomes    = JSON.parse(localStorage.getItem('incomes'))    || [];
-let goals      = JSON.parse(localStorage.getItem('goals'))      || [];
-let budgets    = JSON.parse(localStorage.getItem('budgets'))    || {};
-let recurring  = JSON.parse(localStorage.getItem('recurring'))  || [];
+let expenses  = JSON.parse(localStorage.getItem('expenses'))  || [];
+let incomes   = JSON.parse(localStorage.getItem('incomes'))   || [];
+let goals     = JSON.parse(localStorage.getItem('goals'))     || [];
+let budgets   = JSON.parse(localStorage.getItem('budgets'))   || {};
+let recurring = JSON.parse(localStorage.getItem('recurring')) || [];
 
 let myPieChart;
 let myTrendChart;
+let editTarget = null; // { type: 'income'|'expense', index: number }
 
 const CATEGORIES = ['ອາຫານ','ຄ່າໄຟ','ສຸຂະພາບ','ຄ່ານ້ຳມັນ','ຄ່າເຊົ່າ','ບາດ','ອື່ນໆ'];
 const CAT_COLORS  = ['#FF6384','#36A2EB','#FFCE56','#9966FF','#4BC0C0','#FF9F40','#C9CBCF'];
 
 // =================== HELPERS ===================
 function save() {
-    localStorage.setItem('expenses',  JSON.stringify(expenses));
-    localStorage.setItem('incomes',   JSON.stringify(incomes));
-    localStorage.setItem('goals',     JSON.stringify(goals));
-    localStorage.setItem('budgets',   JSON.stringify(budgets));
-    localStorage.setItem('recurring', JSON.stringify(recurring));
+    localStorage.setItem('expenses',     JSON.stringify(expenses));
+    localStorage.setItem('incomes',      JSON.stringify(incomes));
+    localStorage.setItem('goals',        JSON.stringify(goals));
+    localStorage.setItem('budgets',      JSON.stringify(budgets));
+    localStorage.setItem('recurring',    JSON.stringify(recurring));
+    localStorage.setItem('exchangeRate', document.getElementById('exchangeRate').value || '0');
 }
 
 function getExchangeRate() {
@@ -110,10 +112,17 @@ window.addIncome = () => {
     const curr   = document.getElementById('currencyIncome');
     const date   = document.getElementById('incomeDate');
     if (!name.value || !amount.value || !date.value) { showToast('ກະລຸນາໃສ່ຂໍ້ມູນໃຫ້ຄົບ!', 'error'); return; }
-    incomes.push({ name: name.value, amount: parseFloat(amount.value), currency: curr.value, date: date.value });
-    name.value = ''; amount.value = ''; date.value = '';
+
+    if (editTarget && editTarget.type === 'income') {
+        incomes[editTarget.index] = { name: name.value, amount: parseFloat(amount.value), currency: curr.value, date: date.value };
+        cancelEdit();
+        showToast('ແກ້ໄຂລາຍຮັບສຳເລັດ ✓');
+    } else {
+        incomes.push({ name: name.value, amount: parseFloat(amount.value), currency: curr.value, date: date.value });
+        showToast('ບັນທຶກລາຍຮັບສຳເລັດ ✓');
+    }
+    name.value = ''; amount.value = ''; date.value = today();
     save(); updateUI();
-    showToast('ບັນທຶກລາຍຮັບສຳເລັດ ✓');
 };
 
 // =================== ADD EXPENSE (GENERAL) ===================
@@ -124,10 +133,17 @@ window.addGeneral = () => {
     const curr   = document.getElementById('currency1');
     const date   = document.getElementById('date1');
     if (!item.value || !amount.value || !date.value) { showToast('ກະລຸນາໃສ່ຂໍ້ມູນໃຫ້ຄົບ!', 'error'); return; }
-    expenses.push({ item: item.value, amount: parseFloat(amount.value), category: cat.value, currency: curr.value, date: date.value });
-    item.value = ''; amount.value = ''; date.value = '';
+
+    if (editTarget && editTarget.type === 'expense') {
+        expenses[editTarget.index] = { item: item.value, amount: parseFloat(amount.value), category: cat.value, currency: curr.value, date: date.value };
+        cancelEdit();
+        showToast('ແກ້ໄຂລາຍຈ່າຍສຳເລັດ ✓');
+    } else {
+        expenses.push({ item: item.value, amount: parseFloat(amount.value), category: cat.value, currency: curr.value, date: date.value });
+        showToast('ບັນທຶກລາຍຈ່າຍສຳເລັດ ✓');
+    }
+    item.value = ''; amount.value = ''; date.value = today();
     save(); updateUI();
-    showToast('ບັນທຶກລາຍຈ່າຍສຳເລັດ ✓');
 };
 
 // =================== ADD FUEL ===================
@@ -135,25 +151,85 @@ window.addFuel = () => {
     const total  = parseFloat(document.getElementById('totalAmountPaid').value);
     const liters = document.getElementById('calculatedLiters').value;
     const date   = document.getElementById('fuelDate').value || today();
-    if (!total > 0) return;
+    // FIX: correct validation — !(total > 0) instead of !total > 0
+    if (!(total > 0)) { showToast('ກະລຸນາໃສ່ຈຳນວນເງິນ!', 'error'); return; }
     expenses.push({ item: `ເຕີມນ້ຳມັນ (${liters})`, amount: total, category: 'ຄ່ານ້ຳມັນ', currency: 'LAK', date });
-    document.getElementById('pricePerLiter').value = '';
+    document.getElementById('pricePerLiter').value   = '';
     document.getElementById('totalAmountPaid').value = '';
     document.getElementById('calculatedLiters').value = '';
-    document.getElementById('fuelDate').value = '';
+    document.getElementById('fuelDate').value         = '';
     save(); updateUI();
     showToast('ບັນທຶກຄ່ານ້ຳມັນສຳເລັດ ✓');
 };
 
-// =================== DELETE (FIX: use global index) ===================
+// =================== EDIT ===================
+window.editInc = (globalIdx) => {
+    const inc = incomes[globalIdx];
+    if (!inc) return;
+    editTarget = { type: 'income', index: globalIdx };
+    document.getElementById('incomeName').value   = inc.name;
+    document.getElementById('incomeAmount').value = inc.amount;
+    document.getElementById('currencyIncome').value = inc.currency;
+    document.getElementById('incomeDate').value   = inc.date;
+    document.getElementById('incomeEditBanner').style.display = 'flex';
+    document.getElementById('incomeName').focus();
+    document.getElementById('incomeCard').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    const btn = document.getElementById('incomeSubmitBtn');
+    btn.textContent = '✎ ບັນທຶກການແກ້ໄຂ';
+    btn.className = 'btn-edit-save';
+};
+
+window.editEx = (globalIdx) => {
+    const ex = expenses[globalIdx];
+    if (!ex) return;
+    editTarget = { type: 'expense', index: globalIdx };
+    document.getElementById('item1').value     = ex.item;
+    document.getElementById('amount1').value   = ex.amount;
+    document.getElementById('category1').value = ex.category;
+    document.getElementById('currency1').value = ex.currency;
+    document.getElementById('date1').value     = ex.date;
+    document.getElementById('expenseEditBanner').style.display = 'flex';
+    document.getElementById('item1').focus();
+    document.getElementById('expenseCard').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    // Switch to general tab
+    document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
+    document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+    document.getElementById('generalForm').style.display = 'block';
+    document.querySelectorAll('.tab-btn')[0].classList.add('active');
+    const btn = document.getElementById('expenseSubmitBtn');
+    btn.textContent = '✎ ບັນທຶກການແກ້ໄຂ';
+    btn.className = 'btn-edit-save';
+};
+
+window.cancelEdit = () => {
+    editTarget = null;
+    document.getElementById('incomeEditBanner').style.display  = 'none';
+    document.getElementById('expenseEditBanner').style.display = 'none';
+    document.getElementById('incomeName').value  = '';
+    document.getElementById('incomeAmount').value = '';
+    document.getElementById('incomeDate').value  = today();
+    document.getElementById('item1').value   = '';
+    document.getElementById('amount1').value = '';
+    document.getElementById('date1').value   = today();
+    const iBtn = document.getElementById('incomeSubmitBtn');
+    iBtn.textContent = '+ ບັນທຶກລາຍຮັບ';
+    iBtn.className = 'btn-success';
+    const eBtn = document.getElementById('expenseSubmitBtn');
+    eBtn.textContent = '+ ບັນທຶກລາຍຈ່າຍ';
+    eBtn.className = 'btn-danger';
+};
+
+// =================== DELETE ===================
 window.delEx = (globalIdx) => {
     if (globalIdx < 0 || globalIdx >= expenses.length) return;
     expenses.splice(globalIdx, 1);
+    if (editTarget && editTarget.type === 'expense') cancelEdit();
     save(); updateUI();
 };
 window.delInc = (globalIdx) => {
     if (globalIdx < 0 || globalIdx >= incomes.length) return;
     incomes.splice(globalIdx, 1);
+    if (editTarget && editTarget.type === 'income') cancelEdit();
     save(); updateUI();
 };
 
@@ -172,8 +248,8 @@ window.saveGoal = () => {
     const dl     = document.getElementById('goalDeadline').value;
     if (!name || !amount) { showToast('ກະລຸນາໃສ່ຊື່ ແລະຈຳນວນ!', 'error'); return; }
     goals.push({ id: Date.now(), name, amount, deadline: dl, created: thisMonth() });
-    document.getElementById('goalName').value = '';
-    document.getElementById('goalAmount').value = '';
+    document.getElementById('goalName').value     = '';
+    document.getElementById('goalAmount').value   = '';
     document.getElementById('goalDeadline').value = '';
     save(); updateUI();
     showToast('ບັນທຶກເປົ້າໝາຍສຳເລັດ ✓');
@@ -187,12 +263,24 @@ window.delGoal = (id) => {
 function renderGoals(totalSavedLAK) {
     const el = document.getElementById('goalsList');
     if (!goals.length) { el.innerHTML = '<p class="empty-msg">ຍັງບໍ່ມີເປົ້າໝາຍ — ເພີ່ມເປົ້າໝາຍ​ຂ້າງ​ເທິງ</p>'; return; }
+    const now = new Date();
     el.innerHTML = goals.map(g => {
         const pct = Math.min(100, Math.round((totalSavedLAK / g.amount) * 100));
         const dl  = g.deadline ? ` · ກຳນົດ: ${g.deadline}` : '';
+        // Warning if deadline within 2 months
+        let deadlineWarn = '';
+        if (g.deadline) {
+            const diff = (new Date(g.deadline + '-01') - now) / (1000 * 60 * 60 * 24 * 30);
+            if (diff <= 2 && diff >= 0 && pct < 100) {
+                deadlineWarn = `<span class="goal-warn">⚠️ ໃກ້ຮອດກຳນົດ!</span>`;
+            } else if (diff < 0 && pct < 100) {
+                deadlineWarn = `<span class="goal-warn goal-overdue">❌ ເກີນກຳນົດ</span>`;
+            }
+        }
         return `<div class="goal-item">
             <div class="goal-top">
                 <span class="goal-name">${g.name}</span>
+                ${deadlineWarn}
                 <span class="goal-meta">${fmt(g.amount)}${dl}</span>
                 <button class="btn-del" onclick="delGoal(${g.id})">×</button>
             </div>
@@ -218,18 +306,23 @@ function renderBudgetBars(filteredExpenses) {
     const hasBudget = CATEGORIES.some(c => budgets[c] > 0);
     const el = document.getElementById('budgetBars');
     if (!hasBudget) { el.innerHTML = ''; return; }
-    el.innerHTML = CATEGORIES.filter(c => budgets[c] > 0).map((cat, i) => {
+    el.innerHTML = CATEGORIES.filter(c => budgets[c] > 0).map(cat => {
         const spent = filteredExpenses.filter(e => e.category === cat)
             .reduce((s, e) => s + convertToLAK(e.amount, e.currency), 0);
-        const pct   = Math.min(100, Math.round((spent / budgets[cat]) * 100));
-        const over  = spent > budgets[cat];
+        const pct  = Math.min(100, Math.round((spent / budgets[cat]) * 100));
+        const over = spent > budgets[cat];
+        // Warning at 80%
+        const near = !over && pct >= 80;
         return `<div class="budget-bar-item">
             <div class="budget-bar-label">
                 <span>${cat}</span>
-                <span class="${over ? 'over-budget' : ''}">${fmt(Math.round(spent))} / ${fmt(budgets[cat])} ${over ? '⚠️ ເກີນງົບ!' : ''}</span>
+                <span class="${over ? 'over-budget' : near ? 'near-budget' : ''}">
+                    ${fmt(Math.round(spent))} / ${fmt(budgets[cat])}
+                    ${over ? '⚠️ ເກີນງົບ!' : near ? '⚡ ໃກ້ຮອດງົບ' : ''}
+                </span>
             </div>
             <div class="budget-track">
-                <div class="budget-fill ${over ? 'budget-over' : ''}" style="width:${pct}%"></div>
+                <div class="budget-fill ${over ? 'budget-over' : near ? 'budget-near' : ''}" style="width:${pct}%"></div>
             </div>
         </div>`;
     }).join('');
@@ -246,11 +339,9 @@ window.applyRecurring = () => {
 
     const rec = { id: Date.now(), item, amount, category: cat, currency: curr };
     recurring.push(rec);
-
-    // Add to expenses for that month (1st day)
     expenses.push({ item, amount, category: cat, currency: curr, date: month + '-01', recurringId: rec.id });
     save(); updateUI();
-    document.getElementById('recItem').value = '';
+    document.getElementById('recItem').value   = '';
     document.getElementById('recAmount').value = '';
     showToast('ເພີ່ມ recurring ສຳເລັດ ✓');
 };
@@ -268,6 +359,127 @@ function renderRecurring() {
             <span>${r.item} · ${fmt(r.amount, r.currency)}</span>
             <button onclick="delRecurring(${r.id})">×</button>
         </div>`).join('') + '</div>';
+}
+
+// =================== MONTHLY REPORT ===================
+function buildMonthlyReport() {
+    const allMonths = [...new Set([
+        ...incomes.map(i => getMonth(i.date)),
+        ...expenses.map(e => getMonth(e.date))
+    ])].filter(Boolean).sort().reverse();
+
+    if (!allMonths.length) return '<p class="empty-msg">ຍັງບໍ່ມີຂໍ້ມູນ</p>';
+
+    const rate = getExchangeRate();
+    const rows = allMonths.map(m => {
+        const inc = incomes.filter(i => getMonth(i.date) === m);
+        const exp = expenses.filter(e => getMonth(e.date) === m);
+        const totalInc = inc.reduce((s, i) => s + convertToLAK(i.amount, i.currency), 0);
+        const totalExp = exp.reduce((s, e) => s + convertToLAK(e.amount, e.currency), 0);
+        const saved    = totalInc - totalExp;
+        const pct      = totalInc > 0 ? Math.round((saved / totalInc) * 100) : 0;
+        const cls      = saved >= 0 ? 'pos' : 'neg';
+        return `<tr>
+            <td><strong>${m}</strong></td>
+            <td class="td-amount" style="color:var(--income)">${fmt(Math.round(totalInc))}</td>
+            <td class="td-amount" style="color:var(--expense)">${fmt(Math.round(totalExp))}</td>
+            <td class="td-amount ${cls}">${fmt(Math.round(saved))}</td>
+            <td style="color:${pct>=0?'var(--income)':'var(--expense)'}; font-weight:700; font-family:'Space Mono',monospace">${pct}%</td>
+        </tr>`;
+    }).join('');
+
+    return `<div class="table-wrap" style="padding:0 20px 20px">
+        <table>
+            <thead><tr><th>ເດືອນ</th><th>ລາຍຮັບ</th><th>ລາຍຈ່າຍ</th><th>ເກັບໄດ້</th><th>%</th></tr></thead>
+            <tbody>${rows}</tbody>
+        </table>
+    </div>`;
+}
+
+// =================== IMPORT CSV ===================
+window.importCSV = () => {
+    document.getElementById('csvFileInput').click();
+};
+
+function handleCSVImport(file) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const text = e.target.result.replace(/^\uFEFF/, ''); // strip BOM
+        const lines = text.split('\n').slice(1).filter(l => l.trim());
+        let imported = 0;
+        lines.forEach(line => {
+            // parse CSV respecting quoted fields
+            const cols = line.match(/(".*?"|[^,]+)(?=,|$)/g) || line.split(',');
+            const clean = cols.map(c => c.replace(/^"|"$/g, '').trim());
+            const [type, name, amount, currency, date, category] = clean;
+            if (!type || !amount || !date) return;
+            if (type === 'ລາຍຮັບ') {
+                incomes.push({ name: name || 'Import', amount: parseFloat(amount) || 0, currency: currency || 'LAK', date });
+                imported++;
+            } else if (type === 'ລາຍຈ່າຍ') {
+                expenses.push({ item: name || 'Import', amount: parseFloat(amount) || 0, category: category || 'ອື່ນໆ', currency: currency || 'LAK', date });
+                imported++;
+            }
+        });
+        save(); updateUI();
+        showToast(`Import ສຳເລັດ: ${imported} ລາຍການ ✓`);
+    };
+    reader.readAsText(file, 'utf-8');
+}
+
+// =================== CUSTOM CATEGORIES ===================
+function renderCategoryManager() {
+    const el = document.getElementById('categoryManagerList');
+    if (!el) return;
+    el.innerHTML = CATEGORIES.map((cat, i) =>
+        `<div class="cat-tag">
+            <span>${cat}</span>
+            ${CATEGORIES.length > 1 ? `<button onclick="deleteCategory(${i})">×</button>` : ''}
+        </div>`
+    ).join('');
+    // Refresh all selects
+    refreshCategorySelects();
+}
+
+window.addCategory = () => {
+    const inp = document.getElementById('newCategoryInput');
+    const val = inp.value.trim();
+    if (!val) { showToast('ກະລຸນາໃສ່ຊື່ໝວດ!', 'error'); return; }
+    if (CATEGORIES.includes(val)) { showToast('ມີໝວດນີ້ຢູ່ແລ້ວ!', 'error'); return; }
+    CATEGORIES.push(val);
+    CAT_COLORS.push('#' + Math.floor(Math.random()*0xFFFFFF).toString(16).padStart(6,'0'));
+    budgets[val] = 0;
+    inp.value = '';
+    renderBudgetInputs();
+    renderCategoryManager();
+    save();
+    showToast(`ເພີ່ມໝວດ "${val}" ສຳເລັດ ✓`);
+};
+
+window.deleteCategory = (idx) => {
+    const cat = CATEGORIES[idx];
+    if (expenses.some(e => e.category === cat)) {
+        showToast(`ໝວດ "${cat}" ມີລາຍຈ່າຍຢູ່ — ບໍ່ສາມາດລົບໄດ້`, 'error');
+        return;
+    }
+    CATEGORIES.splice(idx, 1);
+    CAT_COLORS.splice(idx, 1);
+    delete budgets[cat];
+    renderBudgetInputs();
+    renderCategoryManager();
+    save();
+    showToast(`ລົບໝວດ "${cat}" ສຳເລັດ`);
+};
+
+function refreshCategorySelects() {
+    ['category1', 'recCategory'].forEach(id => {
+        const sel = document.getElementById(id);
+        if (!sel) return;
+        const current = sel.value;
+        sel.innerHTML = CATEGORIES.map(c => `<option value="${c}">${c}</option>`).join('');
+        if (CATEGORIES.includes(current)) sel.value = current;
+    });
 }
 
 // =================== CHARTS ===================
@@ -288,7 +500,6 @@ function updatePieChart(data) {
 }
 
 function updateTrendChart() {
-    // Collect last 6 months
     const months = [];
     const now = new Date();
     for (let i = 5; i >= 0; i--) {
@@ -359,10 +570,10 @@ function updateUI() {
         label.textContent = `ສະແດງທັງໝົດ (${expenses.length} ລາຍຈ່າຍ, ${incomes.length} ລາຍຮັບ)`;
     }
 
-    // ===== RENDER EXPENSE TABLE (FIX: track globalIdx) =====
+    // ===== RENDER EXPENSE TABLE =====
     const expBody = document.getElementById('expenseList');
     if (!filteredExpenses.length) {
-        expBody.innerHTML = '<tr><td colspan="3" class="empty-row">ຍັງບໍ່ມີລາຍຈ່າຍ</td></tr>';
+        expBody.innerHTML = '<tr><td colspan="4" class="empty-row">ຍັງບໍ່ມີລາຍຈ່າຍ</td></tr>';
     } else {
         expBody.innerHTML = filteredExpenses.map(ex => {
             const globalIdx = expenses.indexOf(ex);
@@ -372,6 +583,9 @@ function updateUI() {
                     <small>${ex.category} · ${fmtDate(ex.date)}</small>
                 </td>
                 <td class="td-amount">${fmt(ex.amount, ex.currency)}</td>
+                <td>
+                    <button class="btn-edit" onclick="editEx(${globalIdx})" title="ແກ້ໄຂ">✎</button>
+                </td>
                 <td><button class="btn-del" onclick="delEx(${globalIdx})">×</button></td>
             </tr>`;
         }).join('');
@@ -380,7 +594,7 @@ function updateUI() {
     // ===== RENDER INCOME TABLE =====
     const incBody = document.getElementById('incomeList');
     if (!filteredIncomes.length) {
-        incBody.innerHTML = '<tr><td colspan="3" class="empty-row">ຍັງບໍ່ມີລາຍຮັບ</td></tr>';
+        incBody.innerHTML = '<tr><td colspan="4" class="empty-row">ຍັງບໍ່ມີລາຍຮັບ</td></tr>';
     } else {
         incBody.innerHTML = filteredIncomes.map(inc => {
             const globalIdx = incomes.indexOf(inc);
@@ -390,79 +604,91 @@ function updateUI() {
                     <small>${fmtDate(inc.date)}</small>
                 </td>
                 <td class="td-amount">${fmt(inc.amount, inc.currency)}</td>
+                <td>
+                    <button class="btn-edit" onclick="editInc(${globalIdx})" title="ແກ້ໄຂ">✎</button>
+                </td>
                 <td><button class="btn-del" onclick="delInc(${globalIdx})">×</button></td>
             </tr>`;
         }).join('');
     }
 
-    // ===== TOTALS (FIX: use same filtered set for both income & expense when filter is active) =====
+    // ===== TOTALS (FIX: convert all to LAK before calculating balance) =====
+    const totalIncLAK = filteredIncomes.reduce((s, i) => s + convertToLAK(i.amount, i.currency), 0);
+    const totalExpLAK = filteredExpenses.reduce((s, e) => s + convertToLAK(e.amount, e.currency), 0);
+
+    // Show LAK-only and THB-only sub-totals for display
     const incLAK = filteredIncomes.filter(i => i.currency === 'LAK').reduce((s, i) => s + i.amount, 0);
     const incTHB = filteredIncomes.filter(i => i.currency === 'THB').reduce((s, i) => s + i.amount, 0);
     const expLAK = filteredExpenses.filter(e => e.currency === 'LAK').reduce((s, e) => s + e.amount, 0);
     const expTHB = filteredExpenses.filter(e => e.currency === 'THB').reduce((s, e) => s + e.amount, 0);
-
-    const rate   = getExchangeRate();
-    const totalIncLAK = incLAK + (incTHB * rate);
-    const totalExpLAK = expLAK + (expTHB * rate);
-    const balLAK = incLAK - expLAK;
-    const balTHB = incTHB - expTHB;
 
     document.getElementById('totalIncomeLAK').textContent  = fmt(incLAK);
     document.getElementById('totalIncomeTHB').textContent  = fmt(incTHB, 'THB');
     document.getElementById('totalExpenseLAK').textContent = fmt(expLAK);
     document.getElementById('totalExpenseTHB').textContent = fmt(expTHB, 'THB');
 
+    // FIX: balance uses full LAK-converted totals
+    const balLAK = totalIncLAK - totalExpLAK;
     const balLAKEl = document.getElementById('balanceLAK');
-    balLAKEl.textContent = fmt(balLAK);
+    balLAKEl.textContent = fmt(Math.round(balLAK));
     balLAKEl.style.color = balLAK < 0 ? '#ff4757' : '';
 
+    // Balance in THB display (raw THB only)
+    const balTHB = incTHB - expTHB;
     const balTHBEl = document.getElementById('balanceTHB');
     balTHBEl.textContent = fmt(balTHB, 'THB');
     balTHBEl.style.color = balTHB < 0 ? '#ff4757' : '';
 
     // Savings
-    const saved = totalIncLAK - totalExpLAK;
+    const saved    = totalIncLAK - totalExpLAK;
     const savedPct = totalIncLAK > 0 ? Math.round((saved / totalIncLAK) * 100) : 0;
     document.getElementById('savedThisMonth').textContent = fmt(Math.max(0, Math.round(saved)));
-    document.getElementById('savedPercent').textContent = `${savedPct}% ຂອງລາຍຮັບ`;
+    document.getElementById('savedPercent').textContent   = `${savedPct}% ຂອງລາຍຮັບ`;
 
-    // Goals
-    const totalBalLAK = incomes.filter(i=>i.currency==='LAK').reduce((s,i)=>s+i.amount,0) +
-                        incomes.filter(i=>i.currency==='THB').reduce((s,i)=>s+i.amount*rate,0) -
-                        expenses.filter(e=>e.currency==='LAK').reduce((s,e)=>s+e.amount,0) -
-                        expenses.filter(e=>e.currency==='THB').reduce((s,e)=>s+e.amount*rate,0);
+    // Goals — use ALL data (not filtered) for cumulative savings
+    const rate = getExchangeRate();
+    const totalBalLAK =
+        incomes.reduce((s, i) => s + convertToLAK(i.amount, i.currency), 0) -
+        expenses.reduce((s, e) => s + convertToLAK(e.amount, e.currency), 0);
     renderGoals(Math.max(0, totalBalLAK));
 
-    // Budget
+    // Budget + Recurring + Charts
     renderBudgetBars(filteredExpenses);
-
-    // Recurring
     renderRecurring();
 
-    // Charts
     const pieData = CATEGORIES.map(cat =>
         filteredExpenses.filter(e => e.category === cat)
             .reduce((s, e) => s + convertToLAK(e.amount, e.currency), 0));
     updatePieChart(pieData);
     updateTrendChart();
+
+    // Monthly report
+    const reportEl = document.getElementById('monthlyReportBody');
+    if (reportEl) reportEl.innerHTML = buildMonthlyReport();
 }
 
 // =================== INIT ===================
 document.addEventListener('DOMContentLoaded', () => {
-    // Set today's date as default for date inputs
-    document.getElementById('date1').value = today();
-    document.getElementById('incomeDate').value = today();
-    document.getElementById('fuelDate').value = today();
+    document.getElementById('date1').value       = today();
+    document.getElementById('incomeDate').value  = today();
+    document.getElementById('fuelDate').value    = today();
     document.getElementById('filterMonth').value = thisMonth();
 
-    // Restore exchange rate
     const savedRate = localStorage.getItem('exchangeRate');
     if (savedRate) document.getElementById('exchangeRate').value = savedRate;
 
-    document.getElementById('exchangeRate').addEventListener('input', function() {
-        localStorage.setItem('exchangeRate', this.value);
+    document.getElementById('exchangeRate').addEventListener('input', function () {
+        save(); // FIX: save rate together with rest of data on every change
+        updateUI();
+    });
+
+    // CSV import handler
+    document.getElementById('csvFileInput').addEventListener('change', function () {
+        handleCSVImport(this.files[0]);
+        this.value = '';
     });
 
     renderBudgetInputs();
+    renderCategoryManager();
     updateUI();
 });

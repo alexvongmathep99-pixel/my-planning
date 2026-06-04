@@ -292,3 +292,75 @@ tr:last-child td { border-bottom: none; }
     .exchange-body { grid-template-columns: 1fr; }
     .budget-grid { grid-template-columns: 1fr 1fr; }
 }
+
+/* =================== EDIT BANNER =================== */
+.edit-banner {
+    background: #fef3c7;
+    border-left: 4px solid #f59e0b;
+    color: #92400e;
+    padding: 8px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.edit-banner button {
+    background: #f59e0b;
+    color: white;
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 12px;
+    font-weight: 700;
+}
+.edit-banner button:hover { background: #d97706; }
+
+/* =================== EDIT BUTTON =================== */
+.btn-edit {
+    background: #dbeafe;
+    color: #2563eb;
+    width: 28px; height: 28px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1;
+}
+.btn-edit:hover { background: #bfdbfe; }
+
+/* =================== EDIT SAVE BUTTON =================== */
+.btn-edit-save {
+    background: #f59e0b;
+    color: white;
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-weight: 600;
+    width: 100%;
+}
+.btn-edit-save:hover { background: #d97706; }
+
+/* =================== GOAL WARNINGS =================== */
+.goal-warn {
+    font-size: 11px;
+    font-weight: 700;
+    color: #f59e0b;
+    background: #fef3c7;
+    padding: 2px 8px;
+    border-radius: 99px;
+}
+.goal-overdue {
+    color: #ef4444;
+    background: #fee2e2;
+}
+
+/* =================== NEAR BUDGET =================== */
+.near-budget { color: #f59e0b; font-weight: 700; }
+.budget-near { background: #f59e0b !important; }
+
+/* =================== MONTHLY REPORT =================== */
+td.pos { color: var(--income);   font-weight: 700; font-family: 'Space Mono', monospace; }
+td.neg { color: var(--expense);  font-weight: 700; font-family: 'Space Mono', monospace; }
+
+/* =================== CATEGORY MANAGER =================== */
+.cat-manager-body { padding: 16px 20px; display: flex; flex-direction: column; gap: 14px; }
+.cat-add-row { display: flex; gap: 12px; align-items: center; }
+.cat-add-row .btn-primary { white-space: nowrap; padding: 10px 16px; border-radius: 8px; }
