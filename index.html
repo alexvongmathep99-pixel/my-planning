@@ -2,287 +2,570 @@
 <html lang="lo">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#1a1a2e">
-    <title>ລະບົບຈັດການການເງິນ</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#0f172a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <title>ແຜນການເງິນ</title>
     <link rel="manifest" href="manifest.json">
     <link rel="stylesheet" href="style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Lao:wght@300;400;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 </head>
 <body>
-    <!-- HEADER -->
-    <header class="app-header">
-        <div class="header-inner">
-            <div class="header-brand">
-                <span class="brand-icon">₭</span>
-                <div>
-                    <h1>ແຜນການເງິນ</h1>
-                    <p id="currentMonthLabel">ຈັດການລາຍຮັບ - ລາຍຈ່າຍ</p>
-                </div>
-            </div>
-            <div class="header-actions">
-                <button class="btn-icon" onclick="importCSV()" title="Import CSV">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                    Import
-                </button>
-                <button class="btn-icon" onclick="exportCSV()" title="Export CSV">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                    Export
-                </button>
-                <button class="btn-icon btn-danger-soft" onclick="confirmClear()" title="ລ້າງຂໍ້ມູນ">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
-                    ລ້າງ
-                </button>
+
+<a href="#appContent" class="skip-link">ຂ້າມໄປໜ້າຫຼັກ</a>
+
+<!-- PIN SCREEN -->
+<div id="pinScreen" style="display:none;">
+    <div class="pin-box">
+        <div class="pin-logo">₭</div>
+        <h2>ແຜນການເງິນ</h2>
+        <p class="pin-sub">ໃສ່ PIN ເພື່ອເຂົ້າໃຊ້</p>
+        <input type="password" id="pinInput" maxlength="6" placeholder="● ● ● ●" autocomplete="off" inputmode="numeric">
+        <div class="pin-keypad">
+            <button onclick="pinKeypad(1)">1</button><button onclick="pinKeypad(2)">2</button><button onclick="pinKeypad(3)">3</button>
+            <button onclick="pinKeypad(4)">4</button><button onclick="pinKeypad(5)">5</button><button onclick="pinKeypad(6)">6</button>
+            <button onclick="pinKeypad(7)">7</button><button onclick="pinKeypad(8)">8</button><button onclick="pinKeypad(9)">9</button>
+            <button onclick="pinKeypad('del')" class="pin-del">⌫</button><button onclick="pinKeypad(0)">0</button><button onclick="submitPin()" class="pin-ok">✓</button>
+        </div>
+        <div id="pinError" class="pin-error" style="display:none;">❌ PIN ບໍ່ຖືກຕ້ອງ</div>
+    </div>
+</div>
+
+<div id="appContent">
+
+<!-- HEADER -->
+<header class="app-header">
+    <div class="header-inner">
+        <div class="header-brand">
+            <span class="brand-icon">₭</span>
+            <div>
+                <h1>ແຜນການເງິນ</h1>
+                <p id="rateInfo">ກຳລັງໂຫຼດອັດຕາ...</p>
             </div>
         </div>
-    </header>
-
-    <!-- hidden CSV file input -->
-    <input type="file" id="csvFileInput" accept=".csv" style="display:none">
-
-    <main class="app-main">
-
-        <!-- ===== SUMMARY CARDS ===== -->
-        <section class="summary-grid">
-            <div class="sum-card sum-income">
-                <div class="sum-label">ລາຍຮັບທັງໝົດ</div>
-                <div class="sum-val" id="totalIncomeLAK">0 ₭</div>
-                <div class="sum-sub" id="totalIncomeTHB">0 ฿</div>
-            </div>
-            <div class="sum-card sum-expense">
-                <div class="sum-label">ລາຍຈ່າຍທັງໝົດ</div>
-                <div class="sum-val" id="totalExpenseLAK">0 ₭</div>
-                <div class="sum-sub" id="totalExpenseTHB">0 ฿</div>
-            </div>
-            <div class="sum-card sum-balance">
-                <div class="sum-label">ຍອດຄົງເຫຼືອ (ກີບ)</div>
-                <div class="sum-val" id="balanceLAK">0 ₭</div>
-                <div class="sum-sub" id="balanceTHB">0 ฿</div>
-            </div>
-            <div class="sum-card sum-saving">
-                <div class="sum-label">ເງິນທ້ອນໄດ້ (ເດືອນນີ້)</div>
-                <div class="sum-val" id="savedThisMonth">0 ₭</div>
-                <div class="sum-sub" id="savedPercent">0% ຂອງລາຍຮັບ</div>
-            </div>
-        </section>
-
-        <!-- ===== SAVINGS GOAL ===== -->
-        <section class="card goals-section">
-            <div class="card-header">
-                <h2>🎯 ເປົ້າໝາຍການເກັບເງິນ</h2>
-                <button class="btn-link" onclick="toggleSection('goalBody')">ຕັ້ງຄ່າ</button>
-            </div>
-            <div id="goalBody" class="goal-body">
-                <div class="goal-inputs">
-                    <div class="input-group">
-                        <label>ຊື່ເປົ້າໝາຍ</label>
-                        <input type="text" id="goalName" placeholder="ເຊັ່ນ: ຊື້ລົດ, ທ່ຽວ...">
-                    </div>
-                    <div class="input-group">
-                        <label>ຈຳນວນເງິນເປົ້າໝາຍ (₭)</label>
-                        <input type="number" id="goalAmount" placeholder="5,000,000">
-                    </div>
-                    <div class="input-group">
-                        <label>ເດືອນທີ່ຕ້ອງການ</label>
-                        <input type="month" id="goalDeadline">
-                    </div>
-                    <button class="btn-primary" onclick="saveGoal()">ບັນທຶກເປົ້າໝາຍ</button>
-                </div>
-                <div id="goalsList" class="goals-list"></div>
-            </div>
-        </section>
-
-        <!-- ===== EXCHANGE RATE ===== -->
-        <section class="card exchange-section">
-            <div class="card-header">
-                <h2>💱 ອັດຕາແລກປ່ຽນ THB → LAK</h2>
-            </div>
-            <div class="exchange-body">
-                <div class="input-group">
-                    <label>ອັດຕາ (1 ฿ = ? ₭)</label>
-                    <input type="number" id="exchangeRate" placeholder="850" oninput="calculateExchange(); updateUI()">
-                </div>
-                <div class="input-group">
-                    <label>ຈຳນວນ (฿)</label>
-                    <input type="number" id="thaiBaht" placeholder="0" oninput="calculateExchange()">
-                </div>
-                <div class="input-group">
-                    <label>ຜົນລວມ (₭)</label>
-                    <input type="text" id="resultLAK" readonly placeholder="0 ₭">
-                </div>
-            </div>
-        </section>
-
-        <!-- ===== MONTH FILTER ===== -->
-        <section class="filter-bar">
-            <div class="filter-left">
-                <label>📅 ກອງຕາມເດືອນ:</label>
-                <input type="month" id="filterMonth" onchange="updateUI()">
-                <button class="btn-link" onclick="clearFilter()">ດູທັງໝົດ</button>
-            </div>
-            <div class="filter-right" id="filterSummaryLabel"></div>
-        </section>
-
-        <!-- ===== BUDGET PER CATEGORY ===== -->
-        <section class="card">
-            <div class="card-header">
-                <h2>📊 ງົບປະມານຕໍ່ໝວດໝູ່</h2>
-                <button class="btn-link" onclick="toggleSection('budgetBody')">ຕັ້ງຄ່າ</button>
-            </div>
-            <div id="budgetBody" style="display:none;">
-                <div class="budget-grid" id="budgetInputs"></div>
-            </div>
-            <div class="budget-bars" id="budgetBars"></div>
-        </section>
-
-        <!-- ===== CHARTS ===== -->
-        <section class="charts-grid">
-            <div class="card">
-                <div class="card-header"><h2>🥧 ລາຍຈ່າຍຕາມໝວດ</h2></div>
-                <div class="chart-wrap"><canvas id="expenseChart"></canvas></div>
-            </div>
-            <div class="card">
-                <div class="card-header"><h2>📈 Trend ລາຍຮັບ vs ລາຍຈ່າຍ</h2></div>
-                <div class="chart-wrap"><canvas id="trendChart"></canvas></div>
-            </div>
-        </section>
-
-        <!-- ===== MONTHLY REPORT ===== -->
-        <section class="card">
-            <div class="card-header">
-                <h2>📋 ລາຍງານສະຫຼຸບລາຍເດືອນ</h2>
-                <button class="btn-link" onclick="toggleSection('monthlyReportBody')">ສະແດງ/ຊ່ອນ</button>
-            </div>
-            <div id="monthlyReportBody"></div>
-        </section>
-
-        <!-- ===== RECURRING EXPENSES ===== -->
-        <section class="card">
-            <div class="card-header">
-                <h2>🔁 ລາຍຈ່າຍປະຈຳ (Recurring)</h2>
-                <button class="btn-link" onclick="toggleSection('recurringBody')">ເພີ່ມ</button>
-            </div>
-            <div id="recurringBody" style="display:none;" class="form-row">
-                <div class="input-group"><label>ລາຍການ</label><input type="text" id="recItem" placeholder="ຄ່າໄຟ, ຄ່າເຊົ່າ..."></div>
-                <div class="input-group"><label>ຈຳນວນ</label><input type="number" id="recAmount" placeholder="0"></div>
-                <div class="input-group"><label>ໝວດ</label>
-                    <select id="recCategory"></select>
-                </div>
-                <div class="input-group"><label>ສະກຸນ</label>
-                    <select id="recCurrency"><option value="LAK">ກີບ (₭)</option><option value="THB">ບາດ (฿)</option></select>
-                </div>
-                <div class="input-group"><label>ສຳລັບເດືອນ</label><input type="month" id="recMonth"></div>
-                <button class="btn-primary" onclick="applyRecurring()">ໃສ່ recurring</button>
-            </div>
-            <div id="recurringList" class="recurring-list"></div>
-        </section>
-
-        <!-- ===== CUSTOM CATEGORIES ===== -->
-        <section class="card">
-            <div class="card-header">
-                <h2>🏷️ ຈັດການໝວດໝູ່</h2>
-                <button class="btn-link" onclick="toggleSection('categoryManagerBody')">ຕັ້ງຄ່າ</button>
-            </div>
-            <div id="categoryManagerBody" style="display:none;" class="cat-manager-body">
-                <div id="categoryManagerList" class="rec-tags"></div>
-                <div class="cat-add-row">
-                    <input type="text" id="newCategoryInput" placeholder="ຊື່ໝວດໃໝ່..." style="max-width:200px">
-                    <button class="btn-primary" onclick="addCategory()">+ ເພີ່ມໝວດ</button>
-                </div>
-            </div>
-        </section>
-
-        <!-- ===== INCOME & EXPENSE FORMS ===== -->
-        <div class="two-col">
-            <!-- INCOME -->
-            <section class="card" id="incomeCard">
-                <div class="card-header"><h2>💰 ລາຍຮັບ</h2></div>
-                <div id="incomeEditBanner" class="edit-banner" style="display:none;">
-                    ✎ ກຳລັງແກ້ໄຂລາຍຮັບ —
-                    <button onclick="cancelEdit()">ຍົກເລີກ</button>
-                </div>
-                <div class="form-stack">
-                    <div class="input-group"><label>ລາຍການ</label><input type="text" id="incomeName" placeholder="ເງິນເດືອນ, ຂາຍຂອງ..."></div>
-                    <div class="input-group"><label>ຈຳນວນ</label><input type="number" id="incomeAmount" step="any" placeholder="0"></div>
-                    <div class="form-row-2">
-                        <div class="input-group"><label>ສະກຸນ</label>
-                            <select id="currencyIncome"><option value="LAK">ກີບ (₭)</option><option value="THB">ບາດ (฿)</option></select>
-                        </div>
-                        <div class="input-group"><label>ວັນທີ</label><input type="date" id="incomeDate"></div>
-                    </div>
-                    <button id="incomeSubmitBtn" class="btn-success" onclick="addIncome()">+ ບັນທຶກລາຍຮັບ</button>
-                </div>
-                <div class="table-wrap">
-                    <table><thead><tr><th>ລາຍການ</th><th>ຈຳນວນ</th><th></th><th></th></tr></thead>
-                    <tbody id="incomeList"></tbody></table>
-                </div>
-            </section>
-
-            <!-- EXPENSE -->
-            <section class="card" id="expenseCard">
-                <div class="card-header"><h2>💸 ລາຍຈ່າຍ</h2></div>
-                <div id="expenseEditBanner" class="edit-banner" style="display:none;">
-                    ✎ ກຳລັງແກ້ໄຂລາຍຈ່າຍ —
-                    <button onclick="cancelEdit()">ຍົກເລີກ</button>
-                </div>
-                <div class="tabs">
-                    <button class="tab-btn active" onclick="openTab('generalForm', event)">ທົ່ວໄປ</button>
-                    <button class="tab-btn" onclick="openTab('fuelForm', event)">ຄ່ານ້ຳມັນ</button>
-                </div>
-
-                <div id="generalForm" class="tab-content form-stack">
-                    <div class="input-group"><label>ລາຍການ</label><input type="text" id="item1" placeholder="ຊື່ລາຍຈ່າຍ..."></div>
-                    <div class="input-group"><label>ຈຳນວນ</label><input type="number" id="amount1" step="any" placeholder="0"></div>
-                    <div class="form-row-2">
-                        <div class="input-group"><label>ໝວດ</label>
-                            <select id="category1"></select>
-                        </div>
-                        <div class="input-group"><label>ສະກຸນ</label>
-                            <select id="currency1"><option value="LAK">ກີບ (₭)</option><option value="THB">ບາດ (฿)</option></select>
-                        </div>
-                    </div>
-                    <div class="input-group"><label>ວັນທີ</label><input type="date" id="date1"></div>
-                    <button id="expenseSubmitBtn" class="btn-danger" onclick="addGeneral()">+ ບັນທຶກລາຍຈ່າຍ</button>
-                </div>
-
-                <div id="fuelForm" class="tab-content form-stack" style="display:none;">
-                    <div class="input-group"><label>ລາຄາຕໍ່ລິດ (₭)</label><input type="number" id="pricePerLiter" step="any" placeholder="10,000" oninput="calculateLiters()"></div>
-                    <div class="input-group"><label>ເງິນທີ່ໃສ່ (₭)</label><input type="number" id="totalAmountPaid" step="any" placeholder="50,000" oninput="calculateLiters()"></div>
-                    <div class="input-group"><label>ຈຳນວນລິດ</label><input type="text" id="calculatedLiters" readonly placeholder="0 L"></div>
-                    <div class="input-group"><label>ວັນທີ</label><input type="date" id="fuelDate"></div>
-                    <button class="btn-danger" onclick="addFuel()">+ ບັນທຶກຄ່ານ້ຳມັນ</button>
-                </div>
-
-                <div class="table-wrap">
-                    <table><thead><tr><th>ລາຍການ</th><th>ຈຳນວນ</th><th></th><th></th></tr></thead>
-                    <tbody id="expenseList"></tbody></table>
-                </div>
-            </section>
-        </div>
-    </main>
-
-    <!-- TOAST NOTIFICATION -->
-    <div id="toast" class="toast"></div>
-
-    <!-- CONFIRM MODAL -->
-    <div id="confirmModal" class="modal-overlay" style="display:none;">
-        <div class="modal-box">
-            <h3>ລ້າງຂໍ້ມູນທັງໝົດ?</h3>
-            <p>ຂໍ້ມູນທັງໝົດຈະຖືກລົບ ແລະບໍ່ສາມາດກູ້ຄືນໄດ້</p>
-            <div class="modal-actions">
-                <button class="btn-link" onclick="closeModal()">ຍົກເລີກ</button>
-                <button class="btn-danger" onclick="clearAll()">ລ້າງທັງໝົດ</button>
-            </div>
+        <div class="header-actions">
+            <button class="btn-icon" onclick="backupData()" title="Backup JSON">💾 Backup</button>
+            <button class="btn-icon" onclick="restoreData()" title="Restore JSON">📂 Restore</button>
+            <button class="btn-icon" onclick="exportPDF()" title="Export PDF">📄 PDF</button>
+            <button class="btn-icon" onclick="toggleTheme()" id="themeToggle" title="Dark/Light">🌙</button>
+            <button class="btn-icon btn-danger-soft" onclick="confirmClear()" title="ລ້າງຂໍ້ມູນ">🗑️ ລ້າງ</button>
         </div>
     </div>
+</header>
 
-    <script src="script.js"></script>
-    <script>
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('sw.js').catch(() => {});
-        }
-    </script>
+<!-- hidden inputs -->
+<input type="file" id="restoreFileInput" accept=".json" style="display:none">
+<input type="file" id="csvFileInput" accept=".csv" style="display:none">
+
+<!-- BOTTOM NAV -->
+<nav class="bottom-nav" id="bottomNav">
+    <button class="bottom-nav-btn active" data-nav="dashboard" onclick="navTo('dashboard')" aria-label="Dashboard">
+        <span class="nav-icon">📊</span><span class="nav-label">Dashboard</span>
+    </button>
+    <button class="bottom-nav-btn" data-nav="transactions" onclick="navTo('transactions')" aria-label="ລາຍການ">
+        <span class="nav-icon">💳</span><span class="nav-label">ລາຍການ</span>
+    </button>
+    <button class="bottom-nav-btn" data-nav="debt" onclick="navTo('debt')" aria-label="ໜີ້">
+        <span class="nav-icon">🤝</span><span class="nav-label">ໜີ້</span>
+    </button>
+    <button class="bottom-nav-btn" data-nav="ai" onclick="navTo('ai')" aria-label="AI Insights">
+        <span class="nav-icon">🤖</span><span class="nav-label">AI</span>
+    </button>
+    <button class="bottom-nav-btn" data-nav="settings" onclick="navTo('settings')" aria-label="ຕັ້ງຄ່າ">
+        <span class="nav-icon">⚙️</span><span class="nav-label">ຕັ້ງຄ່າ</span>
+    </button>
+</nav>
+
+<main class="app-main" role="main">
+
+<!-- ============ DASHBOARD ============ -->
+<div id="nav-dashboard" class="nav-section">
+
+    <!-- SUMMARY CARDS -->
+    <section class="summary-grid">
+        <div class="sum-card sum-income">
+            <div class="sum-label">ລາຍຮັບທັງໝົດ</div>
+            <div class="sum-val" id="totalIncomeLAK">0 ₭</div>
+            <div class="sum-sub" id="totalIncMulti">0 ฿</div>
+        </div>
+        <div class="sum-card sum-expense">
+            <div class="sum-label">ລາຍຈ່າຍທັງໝົດ</div>
+            <div class="sum-val" id="totalExpenseLAK">0 ₭</div>
+            <div class="sum-sub" id="totalExpMulti">0 ฿</div>
+        </div>
+        <div class="sum-card sum-balance">
+            <div class="sum-label">ຍອດຄົງເຫຼືອ</div>
+            <div class="sum-val" id="balanceLAK">0 ₭</div>
+            <div class="sum-sub" id="balanceMulti">0 ฿</div>
+        </div>
+        <div class="sum-card sum-saving">
+            <div class="sum-label">ເງິນທ້ອນໄດ້</div>
+            <div class="sum-val" id="savedThisMonth">0 ₭</div>
+            <div class="sum-sub" id="savedPercent">0% ຂອງລາຍຮັບ</div>
+        </div>
+    </section>
+
+    <!-- MONTH FILTER + SEARCH -->
+    <section class="filter-bar">
+        <div class="filter-left">
+            <label>📅</label>
+            <input type="month" id="filterMonth" onchange="updateUI()">
+            <button class="btn-link" onclick="clearFilter()">ດູທັງໝົດ</button>
+        </div>
+        <div class="filter-mid">
+            <input type="text" id="searchQuery" placeholder="🔍 ຄົ້ນຫາ..." oninput="updateUI()" style="width:180px;">
+        </div>
+        <div class="filter-right" id="filterSummaryLabel"></div>
+    </section>
+
+    <!-- EXCHANGE RATE -->
+    <section class="card exchange-section">
+        <div class="card-header">
+            <h2>💱 ອັດຕາແລກປ່ຽນ</h2>
+            <button class="btn-link" onclick="fetchRates()">🔄 ອັບເດດ</button>
+        </div>
+        <div class="exchange-body">
+            <div class="input-group">
+                <label>1 ฿ = ? ₭ (THB)</label>
+                <input type="number" id="exchangeRateTHB" placeholder="850" oninput="calculateExchange(); updateUI()">
+            </div>
+            <div class="input-group">
+                <label>1 $ = ? ₭ (USD)</label>
+                <input type="number" id="exchangeRateUSD" placeholder="18000" oninput="updateUI()">
+            </div>
+            <div class="input-group">
+                <label>1 ¥ = ? ₭ (CNY)</label>
+                <input type="number" id="exchangeRateCNY" placeholder="2500" oninput="updateUI()">
+            </div>
+            <div class="input-group">
+                <label>ຈຳນວນ (฿)</label>
+                <input type="number" id="thaiBaht" placeholder="0" oninput="calculateExchange()">
+            </div>
+            <div class="input-group">
+                <label>ຜົນລວມ (₭)</label>
+                <input type="text" id="resultLAK" readonly placeholder="0 ₭">
+            </div>
+        </div>
+    </section>
+
+    <!-- CURRENCY CONVERTER -->
+    <section class="card">
+        <div class="card-header"><h2>🔄 ແປງສະກຸນເງິນ</h2></div>
+        <div style="padding:16px 18px;display:flex;flex-direction:column;gap:12px;">
+            <div style="display:grid;grid-template-columns:1fr auto 1fr auto 1fr;gap:8px;align-items:flex-end;">
+                <div class="input-group">
+                    <label>ຈຳນວນ</label>
+                    <input type="number" id="convAmount" placeholder="0" oninput="convertCurrency()">
+                </div>
+                <div style="padding-bottom:10px;font-size:18px;color:var(--muted);text-align:center;">
+                    <select id="convFrom" onchange="convertCurrency()" style="width:auto;padding:9px 8px;font-weight:700;">
+                        <option value="LAK">₭ LAK</option>
+                        <option value="THB" selected>฿ THB</option>
+                        <option value="USD">$ USD</option>
+                        <option value="CNY">¥ CNY</option>
+                    </select>
+                </div>
+                <div style="padding-bottom:10px;font-size:22px;color:var(--muted);text-align:center;">→</div>
+                <div style="padding-bottom:10px;">
+                    <select id="convTo" onchange="convertCurrency()" style="width:auto;padding:9px 8px;font-weight:700;">
+                        <option value="LAK" selected>₭ LAK</option>
+                        <option value="THB">฿ THB</option>
+                        <option value="USD">$ USD</option>
+                        <option value="CNY">¥ CNY</option>
+                    </select>
+                </div>
+                <div class="converter-result" id="convResult">0</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- BUDGET PER CATEGORY -->
+    <section class="card">
+        <div class="card-header">
+            <h2>📊 ງົບປະມານຕໍ່ໝວດ</h2>
+            <button class="btn-link" onclick="toggleSection('budgetBody')">ຕັ້ງຄ່າ</button>
+        </div>
+        <div id="budgetBody" style="display:none;">
+            <div class="budget-grid" id="budgetInputs"></div>
+        </div>
+        <div class="budget-bars" id="budgetBars"></div>
+    </section>
+
+    <!-- CHARTS -->
+    <section class="charts-grid">
+        <div class="card">
+            <div class="card-header"><h2>🥧 ລາຍຈ່າຍຕາມໝວດ</h2></div>
+            <div class="chart-wrap"><canvas id="expenseChart"></canvas></div>
+        </div>
+        <div class="card">
+            <div class="card-header"><h2>📈 Trend 6 ເດືອນ</h2></div>
+            <div class="chart-wrap"><canvas id="trendChart"></canvas></div>
+        </div>
+    </section>
+
+    <!-- SPENDING HEATMAP -->
+    <section class="card">
+        <div class="card-header"><h2>🗓️ Heatmap ການໃຊ້ຈ່າຍ</h2></div>
+        <div id="heatmapWrap" style="padding:16px;"></div>
+    </section>
+
+    <!-- SAVINGS GOAL -->
+    <section class="card goals-section">
+        <div class="card-header">
+            <h2>🎯 ເປົ້າໝາຍການເກັບເງິນ</h2>
+            <button class="btn-link" onclick="toggleSection('goalBody')">ຕັ້ງຄ່າ</button>
+        </div>
+        <div id="goalBody" class="goal-body" style="display:none;">
+            <div class="goal-inputs">
+                <div class="input-group"><label>ຊື່ເປົ້າໝາຍ</label><input type="text" id="goalName" placeholder="ຊື້ລົດ, ທ່ຽວ..."></div>
+                <div class="input-group"><label>ຈຳນວນ (₭)</label><input type="number" id="goalAmount" placeholder="5,000,000"></div>
+                <div class="input-group"><label>ກຳນົດເດືອນ</label><input type="month" id="goalDeadline"></div>
+                <button class="btn-primary" onclick="saveGoal()">ບັນທຶກ</button>
+            </div>
+            <div id="goalsList" class="goals-list"></div>
+        </div>
+        <div id="goalsListMain" class="goals-list" style="padding:16px;"></div>
+    </section>
+
+    <!-- MONTHLY REPORT -->
+    <section class="card">
+        <div class="card-header">
+            <h2>📋 ລາຍງານລາຍເດືອນ</h2>
+            <button class="btn-link" onclick="toggleSection('monthlyReportBody')">ສະແດງ/ຊ່ອນ</button>
+        </div>
+        <div id="monthlyReportBody"></div>
+    </section>
+
+</div><!-- /dashboard -->
+
+<!-- ============ TRANSACTIONS ============ -->
+<div id="nav-transactions" class="nav-section" style="display:none;">
+
+    <!-- INCOME & EXPENSE FORMS -->
+    <div class="two-col">
+        <!-- INCOME -->
+        <section class="card" id="incomeCard">
+            <div class="card-header"><h2>💰 ລາຍຮັບ</h2></div>
+            <div id="incomeEditBanner" class="edit-banner" style="display:none;">
+                ✎ ກຳລັງແກ້ໄຂ — <button onclick="cancelEdit()">ຍົກເລີກ</button>
+            </div>
+            <div class="form-stack">
+                <div class="input-group"><label>ລາຍການ</label><input type="text" id="incomeName" placeholder="ເງິນເດືອນ..."></div>
+                <div class="input-group"><label>ຈຳນວນ</label><input type="number" id="incomeAmount" step="any" placeholder="0"></div>
+                <div class="form-row-2">
+                    <div class="input-group"><label>ສະກຸນ</label>
+                        <select id="currencyIncome">
+                            <option value="LAK">ກີບ (₭)</option>
+                            <option value="THB">ບາດ (฿)</option>
+                            <option value="USD">ໂດລາ ($)</option>
+                            <option value="CNY">ຢວນ (¥)</option>
+                        </select>
+                    </div>
+                    <div class="input-group"><label>ວັນທີ</label><input type="date" id="incomeDate"></div>
+                </div>
+                <button id="incomeSubmitBtn" class="btn-success" onclick="addIncome()">+ ບັນທຶກລາຍຮັບ</button>
+            </div>
+            <div class="table-wrap">
+                <table>
+                    <thead><tr>
+                        <th onclick="setSort('name')" style="cursor:pointer">ລາຍການ ↕</th>
+                        <th onclick="setSort('amount')" style="cursor:pointer">ຈຳນວນ ↕</th>
+                        <th onclick="setSort('date')" style="cursor:pointer">ວັນທີ ↕</th>
+                        <th></th><th></th>
+                    </tr></thead>
+                    <tbody id="incomeList"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- EXPENSE -->
+        <section class="card" id="expenseCard">
+            <div class="card-header"><h2>💸 ລາຍຈ່າຍ</h2></div>
+            <div id="expenseEditBanner" class="edit-banner" style="display:none;">
+                ✎ ກຳລັງແກ້ໄຂ — <button onclick="cancelEdit()">ຍົກເລີກ</button>
+            </div>
+            <div class="tabs">
+                <button class="tab-btn active" onclick="openTab('generalForm', event)">ທົ່ວໄປ</button>
+                <button class="tab-btn" onclick="openTab('fuelForm', event)">ຄ່ານ້ຳມັນ</button>
+            </div>
+            <div id="generalForm" class="tab-content form-stack">
+                <div class="input-group"><label>ລາຍການ</label><input type="text" id="item1" placeholder="ຊື່ລາຍຈ່າຍ..."></div>
+                <div class="input-group"><label>ຈຳນວນ</label><input type="number" id="amount1" step="any" placeholder="0"></div>
+                <div class="form-row-2">
+                    <div class="input-group"><label>ໝວດ</label><select id="category1"></select></div>
+                    <div class="input-group"><label>ສະກຸນ</label>
+                        <select id="currency1">
+                            <option value="LAK">ກີບ (₭)</option>
+                            <option value="THB">ບາດ (฿)</option>
+                            <option value="USD">ໂດລາ ($)</option>
+                            <option value="CNY">ຢວນ (¥)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="input-group"><label>ວັນທີ</label><input type="date" id="date1"></div>
+                <div class="input-group"><label>ໝາຍເຫດ (ທາງເລືອກ)</label><input type="text" id="note1" placeholder="ໝາຍເຫດ..."></div>
+                <button id="expenseSubmitBtn" class="btn-danger" onclick="addGeneral()">+ ບັນທຶກລາຍຈ່າຍ</button>
+            </div>
+            <div id="fuelForm" class="tab-content form-stack" style="display:none;">
+                <div class="input-group"><label>ລາຄາ/ລິດ (₭)</label><input type="number" id="pricePerLiter" step="any" placeholder="10,000" oninput="calculateLiters()"></div>
+                <div class="input-group"><label>ເງິນທີ່ໃສ່ (₭)</label><input type="number" id="totalAmountPaid" step="any" placeholder="50,000" oninput="calculateLiters()"></div>
+                <div class="input-group"><label>ລິດ</label><input type="text" id="calculatedLiters" readonly placeholder="0 L"></div>
+                <div class="input-group"><label>ວັນທີ</label><input type="date" id="fuelDate"></div>
+                <button class="btn-danger" onclick="addFuel()">+ ບັນທຶກຄ່ານ້ຳມັນ</button>
+            </div>
+            <div class="table-wrap">
+                <table>
+                    <thead><tr>
+                        <th onclick="setSort('item')" style="cursor:pointer">ລາຍການ ↕</th>
+                        <th onclick="setSort('amount')" style="cursor:pointer">ຈຳນວນ ↕</th>
+                        <th onclick="setSort('date')" style="cursor:pointer">ວັນທີ ↕</th>
+                        <th></th><th></th>
+                    </tr></thead>
+                    <tbody id="expenseList"></tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+
+    <!-- RECURRING -->
+    <section class="card">
+        <div class="card-header">
+            <h2>🔁 ລາຍຈ່າຍປະຈຳ</h2>
+            <button class="btn-link" onclick="toggleSection('recurringBody')">ເພີ່ມ</button>
+        </div>
+        <div id="recurringBody" style="display:none;" class="form-row">
+            <div class="input-group"><label>ລາຍການ</label><input type="text" id="recItem" placeholder="ຄ່າໄຟ..."></div>
+            <div class="input-group"><label>ຈຳນວນ</label><input type="number" id="recAmount" placeholder="0"></div>
+            <div class="input-group"><label>ໝວດ</label><select id="recCategory"></select></div>
+            <div class="input-group"><label>ສະກຸນ</label>
+                <select id="recCurrency">
+                    <option value="LAK">ກີບ (₭)</option>
+                    <option value="THB">ບາດ (฿)</option>
+                    <option value="USD">ໂດລາ ($)</option>
+                    <option value="CNY">ຢວນ (¥)</option>
+                </select>
+            </div>
+            <div class="input-group"><label>ສຳລັບເດືອນ</label><input type="month" id="recMonth"></div>
+            <button class="btn-primary" onclick="applyRecurring()">ໃສ່</button>
+        </div>
+        <div id="recurringList" class="recurring-list"></div>
+    </section>
+
+    <!-- CUSTOM CATEGORIES -->
+    <section class="card">
+        <div class="card-header">
+            <h2>🏷️ ຈັດການໝວດໝູ່</h2>
+            <button class="btn-link" onclick="toggleSection('categoryManagerBody')">ຕັ້ງຄ່າ</button>
+        </div>
+        <div id="categoryManagerBody" style="display:none;" class="cat-manager-body">
+            <div id="categoryManagerList" class="rec-tags"></div>
+            <div class="cat-add-row">
+                <input type="text" id="newCategoryInput" placeholder="ໝວດໃໝ່..." style="max-width:200px">
+                <button class="btn-primary" onclick="addCategory()">+ ເພີ່ມ</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- CSV -->
+    <div style="display:flex;gap:12px;padding:0;">
+        <button class="btn-icon" onclick="importCSV()" style="flex:1;justify-content:center;">📥 Import CSV</button>
+        <button class="btn-icon" onclick="exportCSV()" style="flex:1;justify-content:center;">📤 Export CSV</button>
+    </div>
+
+</div><!-- /transactions -->
+
+<!-- ============ DEBT TRACKER ============ -->
+<div id="nav-debt" class="nav-section" style="display:none;">
+
+    <section class="card">
+        <div class="card-header"><h2>🤝 ບັນທຶກໜີ້ / ການຢືມ</h2></div>
+        <div class="form-row">
+            <div class="input-group"><label>ຜູ້ ຢືມ / ໃຫ້ຢືມ</label><input type="text" id="debtWho" placeholder="ຊື່..."></div>
+            <div class="input-group"><label>ຈຳນວນ</label><input type="number" id="debtAmount" placeholder="0"></div>
+            <div class="input-group"><label>ສະກຸນ</label>
+                <select id="debtCurrency">
+                    <option value="LAK">ກີບ (₭)</option>
+                    <option value="THB">ບາດ (฿)</option>
+                    <option value="USD">ໂດລາ ($)</option>
+                    <option value="CNY">ຢວນ (¥)</option>
+                </select>
+            </div>
+            <div class="input-group"><label>ປະເພດ</label>
+                <select id="debtType">
+                    <option value="lent">💸 ຂ້ອຍໃຫ້ຢືມ</option>
+                    <option value="borrowed">🤲 ຂ້ອຍຢືມຈາກ</option>
+                </select>
+            </div>
+            <div class="input-group"><label>ໝາຍເຫດ</label><input type="text" id="debtNote" placeholder="ເຫດຜົນ..."></div>
+            <div class="input-group"><label>ວັນທີ</label><input type="date" id="debtDate"></div>
+            <button class="btn-primary" onclick="addDebt()">+ ບັນທຶກ</button>
+        </div>
+        <div id="debtList" style="padding:16px;"></div>
+    </section>
+
+    <!-- NET WORTH -->
+    <section class="card">
+        <div class="card-header">
+            <h2>💼 Net Worth</h2>
+            <button class="btn-link" onclick="toggleSection('netWorthBody')">ຈັດການ</button>
+        </div>
+        <div id="netWorthBody" style="display:none;">
+            <div class="form-row">
+                <div class="input-group"><label>ຊັບສິນ</label><input type="text" id="assetName" placeholder="ເງິນສົດ, ລົດ..."></div>
+                <div class="input-group"><label>ມູນຄ່າ</label><input type="number" id="assetValue" placeholder="0"></div>
+                <div class="input-group"><label>ສະກຸນ</label>
+                    <select id="assetCurrency">
+                        <option value="LAK">ກີບ (₭)</option>
+                        <option value="THB">ບາດ (฿)</option>
+                        <option value="USD">ໂດລາ ($)</option>
+                        <option value="CNY">ຢວນ (¥)</option>
+                    </select>
+                </div>
+                <button class="btn-success" onclick="addAsset()">+ ຊັບສິນ</button>
+            </div>
+            <div class="form-row">
+                <div class="input-group"><label>ໜີ້ສິນ</label><input type="text" id="liabName" placeholder="ສິນເຊື່ອ, ກູ້..."></div>
+                <div class="input-group"><label>ຈຳນວນ</label><input type="number" id="liabValue" placeholder="0"></div>
+                <div class="input-group"><label>ສະກຸນ</label>
+                    <select id="liabCurrency">
+                        <option value="LAK">ກີບ (₭)</option>
+                        <option value="THB">ບາດ (฿)</option>
+                        <option value="USD">ໂດລາ ($)</option>
+                        <option value="CNY">ຢວນ (¥)</option>
+                    </select>
+                </div>
+                <button class="btn-danger" onclick="addLiability()" style="width:auto;">+ ໜີ້ສິນ</button>
+            </div>
+        </div>
+        <div id="netWorthDisplay" style="padding:16px;"></div>
+    </section>
+
+    <!-- BILL REMINDER -->
+    <section class="card">
+        <div class="card-header">
+            <h2>📅 Bill Reminder</h2>
+            <button class="btn-link" onclick="toggleSection('billBody')">ເພີ່ມ</button>
+        </div>
+        <div id="billBody" style="display:none;" class="form-row">
+            <div class="input-group"><label>ຊື່</label><input type="text" id="billName" placeholder="ຄ່າໄຟ, ອິນເຕີເນັດ..."></div>
+            <div class="input-group"><label>ຈຳນວນ</label><input type="number" id="billAmount" placeholder="0"></div>
+            <div class="input-group"><label>ສະກຸນ</label>
+                <select id="billCurrency">
+                    <option value="LAK">ກີບ (₭)</option>
+                    <option value="THB">ບາດ (฿)</option>
+                </select>
+            </div>
+            <div class="input-group"><label>ຄົບກຳນົດວັນທີ</label><input type="number" id="billDueDay" min="1" max="31" placeholder="15"></div>
+            <button class="btn-primary" onclick="addBill()">+ ເພີ່ມ</button>
+        </div>
+        <div id="billList" style="padding:16px;"></div>
+    </section>
+
+</div><!-- /debt -->
+
+<!-- ============ AI INSIGHTS ============ -->
+<div id="nav-ai" class="nav-section" style="display:none;">
+
+    <section class="card ai-section">
+        <div class="card-header">
+            <h2>🤖 AI Spending Insights</h2>
+            <button class="btn-link" onclick="loadAIInsights()">🔄 ວິເຄາະໃໝ່</button>
+        </div>
+        <div class="ai-body" id="aiBody">
+            <div class="ai-prompt-area">
+                <p class="ai-desc">ໃຫ້ AI ວິເຄາະຂໍ້ມູນການໃຊ້ຈ່າຍຂອງທ່ານ ແລະ ໃຫ້ຄຳແນະນຳ</p>
+                <div class="ai-question-row">
+                    <input type="text" id="aiQuestion" placeholder="ຖາມຫຍັງກໍໄດ້... ເຊັ່ນ: ຂ້ອຍໃຊ້ຈ່າຍຫຼາຍໄປບໍ?" style="flex:1;">
+                    <button class="btn-primary" onclick="askAI()">ຖາມ AI</button>
+                </div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
+                    <button class="ai-chip" onclick="quickAsk('ວິເຄາະລາຍຈ່າຍຂອງຂ້ອຍ ແລະ ຊ່ວຍຂ້ອຍປະຢັດ')">📊 ວິເຄາະລາຍຈ່າຍ</button>
+                    <button class="ai-chip" onclick="quickAsk('ຂ້ອຍຄວນຫຼຸດລາຍຈ່າຍໝວດໃດ?')">✂️ ຫຼຸດລາຍຈ່າຍ</button>
+                    <button class="ai-chip" onclick="quickAsk('ແນະນຳວິທີເພີ່ມລາຍຮັບ')">💡 ເພີ່ມລາຍຮັບ</button>
+                    <button class="ai-chip" onclick="quickAsk('ສ້າງແຜນງົບປະມານ 3 ເດືອນ')">📅 ແຜນ 3 ເດືອນ</button>
+                </div>
+            </div>
+            <div id="aiResult" class="ai-result" style="display:none;"></div>
+            <div id="aiLoading" class="ai-loading" style="display:none;">
+                <div class="ai-spinner"></div>
+                <p>AI ກຳລັງວິເຄາະ...</p>
+            </div>
+        </div>
+    </section>
+
+</div><!-- /ai -->
+
+<!-- ============ SETTINGS ============ -->
+<div id="nav-settings" class="nav-section" style="display:none;">
+
+    <section class="card">
+        <div class="card-header"><h2>⚙️ ຕັ້ງຄ່າ</h2></div>
+        <div class="settings-body">
+            <div class="setting-group">
+                <h3>🔒 PIN Lock</h3>
+                <div class="form-row-2" style="padding:0;gap:12px;">
+                    <div class="input-group"><label>PIN ໃໝ່</label><input type="password" id="newPin" maxlength="6" placeholder="4-6 ຕົວ" inputmode="numeric"></div>
+                    <div class="input-group"><label>ຢືນຢັນ PIN</label><input type="password" id="confirmPin" maxlength="6" placeholder="ຊ້ຳ PIN" inputmode="numeric"></div>
+                </div>
+                <div style="display:flex;gap:10px;margin-top:10px;">
+                    <button class="btn-primary" onclick="savePin()">ຕັ້ງ PIN</button>
+                    <button class="btn-link" onclick="clearPin()" style="color:var(--expense);">ລົບ PIN</button>
+                </div>
+            </div>
+            <div class="setting-group">
+                <h3>💾 Backup &amp; Restore</h3>
+                <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                    <button class="btn-primary" onclick="backupData()">💾 Backup JSON</button>
+                    <button class="btn-icon" onclick="restoreData()">📂 Restore JSON</button>
+                    <button class="btn-icon" onclick="exportCSV()">📤 Export CSV</button>
+                    <button class="btn-icon" onclick="importCSV()">📥 Import CSV</button>
+                    <button class="btn-icon" onclick="exportPDF()">📄 Export PDF</button>
+                </div>
+            </div>
+            <div class="setting-group">
+                <h3>🎨 ຮູບແບບ</h3>
+                <button class="btn-icon" onclick="toggleTheme()" id="themeToggle2">🌙 Dark / Light Mode</button>
+            </div>
+        </div>
+    </section>
+
+</div><!-- /settings -->
+
+</main>
+
+<!-- TOAST -->
+<div id="toast" class="toast" role="alert" aria-live="polite"></div>
+
+<!-- CONFIRM MODAL -->
+<div id="confirmModal" class="modal-overlay" style="display:none;">
+    <div class="modal-box">
+        <h3>⚠️ ລ້າງຂໍ້ມູນທັງໝົດ?</h3>
+        <p>ຂໍ້ມູນທັງໝົດຈະຖືກລົບ ແລະ ບໍ່ສາມາດກູ້ຄືນໄດ້</p>
+        <div class="modal-actions">
+            <button class="btn-link" onclick="closeModal()">ຍົກເລີກ</button>
+            <button class="btn-danger" onclick="clearAll()" style="width:auto;">ລ້າງທັງໝົດ</button>
+        </div>
+    </div>
+</div>
+
+</div><!-- /appContent -->
+
+<script src="script.js"></script>
+<script>
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('sw.js').catch(() => {});
+    }
+</script>
+<script>
+// Close pay modal on backdrop click
+document.addEventListener('click', function(e) {
+  const modal = document.getElementById('payDebtModal');
+  if (modal && e.target === modal) modal.remove();
+});
+</script>
 </body>
 </html>
