@@ -156,12 +156,13 @@
     <section class="card">
         <div class="card-header"><h2>🔄 ແປງສະກຸນເງິນ</h2></div>
         <div style="padding:16px 18px;display:flex;flex-direction:column;gap:12px;">
-            <div style="display:grid;grid-template-columns:1fr auto 1fr auto 1fr;gap:8px;align-items:flex-end;">
-                <div class="input-group">
+            <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;">
+                <div class="input-group" style="min-width:90px;flex:1;">
                     <label>ຈຳນວນ</label>
                     <input type="number" id="convAmount" placeholder="0" oninput="convertCurrency()">
                 </div>
-                <div style="padding-bottom:10px;font-size:18px;color:var(--muted);text-align:center;">
+                <div class="input-group" style="flex:0 0 auto;">
+                    <label>ຈາກ</label>
                     <select id="convFrom" onchange="convertCurrency()" style="width:auto;padding:9px 8px;font-weight:700;">
                         <option value="LAK">₭ LAK</option>
                         <option value="THB" selected>฿ THB</option>
@@ -169,8 +170,9 @@
                         <option value="CNY">¥ CNY</option>
                     </select>
                 </div>
-                <div style="padding-bottom:10px;font-size:22px;color:var(--muted);text-align:center;">→</div>
-                <div style="padding-bottom:10px;">
+                <div style="padding-bottom:10px;font-size:20px;color:var(--muted);">→</div>
+                <div class="input-group" style="flex:0 0 auto;">
+                    <label>ໄປ</label>
                     <select id="convTo" onchange="convertCurrency()" style="width:auto;padding:9px 8px;font-weight:700;">
                         <option value="LAK" selected>₭ LAK</option>
                         <option value="THB">฿ THB</option>
@@ -178,7 +180,10 @@
                         <option value="CNY">¥ CNY</option>
                     </select>
                 </div>
-                <div class="converter-result" id="convResult">0</div>
+                <div class="input-group" style="flex:1;min-width:90px;">
+                    <label>ຜົນລວມ</label>
+                    <div class="converter-result" id="convResult">0</div>
+                </div>
             </div>
         </div>
     </section>
@@ -515,6 +520,15 @@
                     <button class="btn-primary" onclick="savePin()">ຕັ້ງ PIN</button>
                     <button class="btn-link" onclick="clearPin()" style="color:var(--expense);">ລົບ PIN</button>
                 </div>
+            </div>
+            <div class="setting-group">
+                <h3>🤖 AI Settings</h3>
+                <p style="font-size:12px;color:var(--muted);margin-bottom:8px;">ໃສ່ Anthropic API Key ສຳລັບໃຊ້ AI Insights (<a href="https://console.anthropic.com" target="_blank" style="color:#4f46e5;">console.anthropic.com</a>)</p>
+                <div style="display:flex;gap:10px;align-items:center;">
+                    <input type="password" id="aiApiKey" placeholder="sk-ant-..." style="flex:1;font-family:monospace;" oninput="saveApiKey()">
+                    <button class="btn-link" onclick="clearApiKey()" style="color:var(--expense);white-space:nowrap;">ລົບ Key</button>
+                </div>
+                <p id="aiKeyStatus" style="font-size:11px;color:var(--muted);"></p>
             </div>
             <div class="setting-group">
                 <h3>💾 Backup &amp; Restore</h3>

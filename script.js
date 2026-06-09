@@ -203,9 +203,9 @@ async function fetchRates() {
   const tEl = document.getElementById('exchangeRateTHB');
   const uEl = document.getElementById('exchangeRateUSD');
   const cEl = document.getElementById('exchangeRateCNY');
-  if (tEl && !tEl.value) tEl.value = exRates.THB || 850;
-  if (uEl && !uEl.value) uEl.value = exRates.USD || 18000;
-  if (cEl && !cEl.value) cEl.value = exRates.CNY || 2500;
+  if (tEl) tEl.value = exRates.THB || 850;
+  if (uEl) uEl.value = exRates.USD || 18000;
+  if (cEl) cEl.value = exRates.CNY || 2500;
   if (rateInfoEl) {
     rateInfoEl.textContent = `1฿=${fmt(exRates.THB)} · 1$=${fmt(exRates.USD)} · 1¥=${fmt(exRates.CNY)}`;
   }
@@ -911,16 +911,44 @@ window.exportPDF = () => {
 };
 
 // =================== AI INSIGHTS ===================
+// =================== API KEY ===================
+window.saveApiKey = () => {
+  const val = document.getElementById('aiApiKey')?.value?.trim();
+  if (val) {
+    localStorage.setItem('anthropicKey', val);
+    const st = document.getElementById('aiKeyStatus');
+    if (st) st.textContent = '✅ Key ບັນທຶກແລ້ວ (ບໍ່ sync ໄປ cloud)';
+  }
+};
+window.clearApiKey = () => {
+  localStorage.removeItem('anthropicKey');
+  const el = document.getElementById('aiApiKey');
+  if (el) el.value = '';
+  const st = document.getElementById('aiKeyStatus');
+  if (st) st.textContent = 'ລົບ Key ແລ້ວ';
+};
+
 async function callAI(prompt) {
+  const apiKey = localStorage.getItem('anthropicKey') || '';
+  if (!apiKey) throw new Error('ກະລຸນາໃສ່ Anthropic API Key ໃນ Settings ກ່ອນ');
   const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    },
     body: JSON.stringify({
       model: 'claude-sonnet-4-20250514',
       max_tokens: 1000,
       messages: [{ role: 'user', content: prompt }]
     })
   });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.error?.message || 'API error ' + response.status);
+  }
   const data = await response.json();
   if (data.content && data.content[0]) return data.content[0].text;
   throw new Error('No response');
@@ -1013,7 +1041,8 @@ async function runAIQuery(prompt) {
     }
   } catch (err) {
     if (resultEl) {
-      resultEl.innerHTML = `<div class="ai-error">❌ ບໍ່ສາມາດເຊື່ອມຕໍ່ AI ໄດ້. ກວດສອບ internet ຂອງທ່ານ.</div>`;
+      const isKey = err.message && err.message.includes('API Key');
+      resultEl.innerHTML = `<div class="ai-error">❌ ${isKey ? err.message + ' ໄປທີ່ Settings > AI Settings' : 'ບໍ່ສາມາດເຊື່ອມຕໍ່ AI ໄດ້: ' + err.message}</div>`;
       resultEl.style.display = 'block';
     }
   } finally {
@@ -1097,7 +1126,7 @@ function updateUI() {
       ? filteredExp.map(ex => {
           const gi = expenses.indexOf(ex);
           return `<tr>
-            <td class="td-main"><strong>${escHtml(ex.item)}</strong><small>${escHtml(ex.category)} · ${fmtDate(ex.date)}${ex.note ? ' · <span class=\'note-tag\'>' + escHtml(ex.note) + '</span>' : ''}</small></td>
+            <td class="td-main"><strong>${escHtml(ex.item)}</strong><small>${escHtml(ex.category)} · ${fmtDate(ex.date)}${ex.note ? ' · <span class="note-tag">' + escHtml(ex.note) + '</span>' : ''}</small></td>
             <td class="td-amount">${fmt(ex.amount, ex.currency)}</td>
             <td>${fmtDate(ex.date)}</td>
             <td><button class="btn-edit" onclick="editEx(${gi})" title="ແກ້ໄຂ">✎</button></td>
@@ -1254,6 +1283,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   checkBillMonthReset();
   renderBudgetInputs();
   renderCategoryManager();
+
+  // Load saved API key
+  const savedKey = localStorage.getItem('anthropicKey');
+  const keyEl = document.getElementById('aiApiKey');
+  if (keyEl && savedKey) keyEl.value = savedKey;
+  const st = document.getElementById('aiKeyStatus');
+  if (st && savedKey) st.textContent = '✅ API Key ຖືກໂຫຼດແລ້ວ';
 
   // Fetch live rates (non-blocking)
   fetchRates().catch(() => {});
