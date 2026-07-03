@@ -562,9 +562,16 @@ window.addDebt = () => {
   const note   = document.getElementById('debtNote')?.value;
   const date   = document.getElementById('debtDate')?.value || today();
   if (!who || !amount) { showToast('ກະລຸນາໃສ່ຂໍ້ມູນໃຫ້ຄົບ!', 'error'); return; }
-  debts.push({ id: Date.now(), who, amount, currency: curr, type, note, date, paid: 0 });
+  const debtId = Date.now();
+  debts.push({ id: debtId, who, amount, currency: curr, type, note, date, paid: 0 });
+  // ຢືມເງິນມາ = ເງິນສົດເຂົ້າ (ລາຍຮັບ) / ໃຫ້ຢືມເງິນໄປ = ເງິນສົດອອກ (ລາຍຈ່າຍ)
+  if (type === 'borrowed') {
+    incomes.push({ name: `ຢືມເງິນຈາກ ${who}`, amount, currency: curr, date, debtId, debtTx: true });
+  } else if (type === 'lent') {
+    expenses.push({ item: `ໃຫ້ຢືມເງິນ ${who}`, amount, category: 'ອື່ນໆ', currency: curr, date, note: note || 'ໃຫ້ຢືມເງິນ', debtId, debtTx: true });
+  }
   ['debtWho', 'debtAmount', 'debtNote'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
-  save(); renderDebts(); showToast(type === 'lent' ? 'ບັນທຶກການໃຫ້ຢືມ ✓' : 'ບັນທຶກການຢືມ ✓');
+  save(); updateUI(); showToast(type === 'lent' ? 'ບັນທຶກການໃຫ້ຢືມ ✓' : 'ບັນທຶກການຢືມ ✓');
 };
 window.payDebt = (id) => {
   const d = debts.find(x => x.id === id); if (!d) return;
@@ -595,13 +602,26 @@ window.confirmPayDebt = (id) => {
   const d = debts.find(x => x.id === id); if (!d) return;
   const pv = parseFloat(document.getElementById('payDebtAmount')?.value || 0);
   if (!(pv > 0)) { showToast('ກະລຸນາໃສ່ຈຳນວນ!', 'error'); return; }
+  const remaining = d.amount - d.paid;
+  const payAmount = Math.min(remaining, pv);
   d.paid = Math.min(d.amount, d.paid + pv);
+  // ຮັບຄືນໜີ້ (ໃຫ້ຢືມ) = ເງິນສົດເຂົ້າ / ຈ່າຍຄືນໜີ້ (ຢືມມາ) = ເງິນສົດອອກ
+  if (d.type === 'lent') {
+    incomes.push({ name: `ຮັບຄືນໜີ້ຈາກ ${d.who}`, amount: payAmount, currency: d.currency, date: today(), debtId: d.id, debtTx: true });
+  } else if (d.type === 'borrowed') {
+    expenses.push({ item: `ຈ່າຍຄືນໜີ້ ${d.who}`, amount: payAmount, category: 'ອື່ນໆ', currency: d.currency, date: today(), note: 'ຈ່າຍຄືນໜີ້', debtId: d.id, debtTx: true });
+  }
   document.getElementById('payDebtModal')?.remove();
   if (d.paid >= d.amount) showToast('ຊຳລະໜີ້ຄົບແລ້ວ! 🎉');
   else showToast(`ຈ່າຍ ${fmt(pv, d.currency)} ສຳເລັດ ✓`);
-  save(); renderDebts();
+  save(); updateUI();
 };
-window.delDebt = (id) => { debts = debts.filter(x => x.id !== id); save(); renderDebts(); };
+window.delDebt = (id) => {
+  debts = debts.filter(x => x.id !== id);
+  incomes  = incomes.filter(x => !(x.debtTx && x.debtId === id));
+  expenses = expenses.filter(x => !(x.debtTx && x.debtId === id));
+  save(); updateUI();
+};
 function renderDebts() {
   const el = document.getElementById('debtList');
   if (!el) return;
